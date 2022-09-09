@@ -29,6 +29,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.data import Data, Batch
 import torch_geometric.nn as gnn
+import torch_geometric.data as gd
 from torch.distributions import Categorical
 import concurrent.futures
 
@@ -68,6 +69,9 @@ parser.add_argument("--save_path", default='results/mars/')
 parser.add_argument("--proxy_path", default='data/pretrained_proxy/')
 parser.add_argument("--print_array_length", default=False, action='store_true')
 parser.add_argument("--progress", default='yes')
+parser.add_argument("--reward_type", default='sum')
+parser.add_argument("--use_wandb", default=False, action='store_true')
+parser.add_argument("--num_objectives", default=2, type=int)
 
 
 class SplitCategorical:
@@ -102,7 +106,6 @@ class Dataset:
 
     def __init__(self, args, bpath, device, repr_type, floatX=torch.double):
         self.mol_buffer = None
-        self.proxy_reward = _load_task_models()['seh']
         self.test_split_rng = np.random.RandomState(142857)
         self.train_rng = np.random.RandomState(int(time.time()))
         self.train_mols = []
@@ -134,9 +137,8 @@ class Dataset:
 
         if args.use_wandb:
             # Wandb project initialization
-            wandb.init(project="MARS baseline", entity="mogfn")
+            wandb.init(project="MARS baseline", entity="mogfn", name=f"{args.reward_type} | Number Of Objectives - { args.num_objectives}")
             wandb.config.update(args)
-
 
     def set_sampling_model(self, model, sample_prob=0.5):
         self.sampling_model = model
@@ -170,7 +172,6 @@ class Dataset:
             b_o = b_o * bond_is_degree_1 - 1000 * (1 - bond_is_degree_1)
         else:
             b_o = b_o * 0 - 1000
-
         if len(m.blocks) >= self.max_blocks or not len(m.stems):
             # We can't add any more blocks to this mol, let's sample a break action
             cat = Categorical(logits=b_o)
@@ -217,9 +218,12 @@ class Dataset:
 
     def _get_reward(self, m):
         rdmol = m.mol
-        if rdmol is None:
-            return self.R_min
-        seh_preds = self.proxy_reward(m).clip(1e-4, 100).data.cpu() / 8
+        graph = [reward_proxy.mol2graph(rdmol)]
+        is_valid = torch.tensor([i is not None for i in graph]).bool()
+        if not is_valid.any():
+            return 0, np.zeros(4)
+        batch = gd.Batch.from_data_list([i for i in graph if i is not None])
+        seh_preds = self.proxy_reward(batch).reshape(-1).clip(1e-4, 100).data.cpu() / 8
         seh_preds[seh_preds.isnan()] = 0
 
         def safe(f, x, default):
@@ -229,11 +233,12 @@ class Dataset:
                 return default
 
         qeds = safe(QED.qed, rdmol, 0)
-        sas = safe(sascore.calculateScore, i, 10)
+        sas = safe(sascore.calculateScore, rdmol, 10)
         sas = (10 - sas) / 9  # Turn into a [0-1] reward
         molwts = safe(Descriptors.MolWt, rdmol, 1000)
-        molwts = ((300 - molwts) / 700 + 1).clip(0, 1)  # 1 until 300 then linear decay to 0 until 1000
-        flat_rewards = np.array([seh_preds, qeds, sas, molwts])
+        molwts = ((300 - molwts) / 700 + 1)  # 1 until 300 then linear decay to 0 until 1000
+        molwts = max(min(molwts, 1), 0)
+        flat_rewards = np.array([seh_preds.item(), qeds, sas, molwts])[:self.args.num_objectives]
         if self.args.reward_type == "sum":
             return np.sum(flat_rewards, axis=0) ** self.reward_exp, flat_rewards
         elif self.args.reward_type == "prod":
@@ -258,10 +263,10 @@ class Dataset:
         flat_rewards = np.array([i[-1] for i in self.sampled_mols])
         metrics = self.stats_hook(flat_rewards)
         # Use wandb to log the metrics
-        wandb.log(metrics)
-
-
-
+        if self.args.use_wandb:
+            wandb.log(metrics)
+        else:
+            print(metrics)
 
 
 _stop = [None]
@@ -282,7 +287,7 @@ def main(args):
     exp_dir = f'{args.save_path}/{args.array}_{args.run}/'
     os.makedirs(exp_dir, exist_ok=True)
     print(args)
-    debug_no_threads = False
+    debug_no_threads = True
 
     mdp = dataset.mdp
 
@@ -341,9 +346,13 @@ def main(args):
         dataset.step_all(num_threads)
         for _ in tqdm(range(args.num_sgd_steps), leave=False):
             s, a = dataset.sample2batch(dataset.sample(mbsize))
-            stem_out, mol_out, bond_out = model(s, None, do_bonds=True)
-            bs = torch.tensor(s.__slices__['bonds'])
-            ss = torch.tensor(s.__slices__['stems'])
+            if args.repr_type == 'block_graph':
+                stem_out, bond_out = model(s, do_stems=True)
+            else:
+                stem_out, mol_out, bond_out = model(s, do_bonds=True)
+            print(s, type(s))
+            bs = torch.tensor(s._slice_dict['bonds'])
+            ss = torch.tensor(s._slice_dict['stems'])
             loss = 0
             for j in range(mbsize):
                 sj = stem_out[ss[j]:ss[j + 1]]
@@ -361,6 +370,7 @@ def main(args):
                 torch.nn.utils.clip_grad_value_(model.parameters(),
                                                 args.clip_grad)
             opt.step()
+        dataset.log_metrics()
         model.training_steps = i + 1
         if not i % 10:
             last_losses = [np.round(np.mean(i), 3) for i in zip(*last_losses)]

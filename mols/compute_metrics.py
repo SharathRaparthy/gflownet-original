@@ -378,6 +378,7 @@ class MultiObjectiveStatsHook:
         self.hsri_epsilon = 0.3
 
     def __call__(self, flat_rewards):
+        flat_rewards = torch.tensor(flat_rewards)
         self.all_flat_rewards = self.all_flat_rewards + list(flat_rewards)
         if len(self.all_flat_rewards) > self.num_to_keep:
             self.all_flat_rewards = self.all_flat_rewards[-self.num_to_keep:]
@@ -385,7 +386,7 @@ class MultiObjectiveStatsHook:
         flat_rewards = torch.stack(self.all_flat_rewards).numpy()
         target_min = flat_rewards.min(0).copy()
         target_range = flat_rewards.max(0).copy() - target_min
-        hypercube_transform = metrics.Normalizer(
+        hypercube_transform = Normalizer(
             loc=target_min,
             scale=target_range,
         )
