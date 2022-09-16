@@ -54,6 +54,7 @@ parser.add_argument("--max_generated_mols", default=1e6, type=int)
 parser.add_argument("--num_conv_steps", default=12, type=int)
 parser.add_argument("--log_reg_c", default=0, type=float)
 parser.add_argument("--reward_exp", default=4, type=float)
+parser.add_argument("--seed", default=4, type=int)
 parser.add_argument("--sample_prob", default=1, type=float)
 parser.add_argument("--clip_grad", default=0, type=float)
 parser.add_argument("--clip_loss", default=0, type=float)
@@ -137,7 +138,7 @@ class Dataset:
 
         if args.use_wandb:
             # Wandb project initialization
-            wandb.init(project="MARS baseline", entity="mogfn", name=f"{args.reward_type} | Number Of Objectives - { args.num_objectives}")
+            wandb.init(project="MARS baseline", entity="mogfn", name=f" Final| {args.reward_type} | Number Of Objectives - {args.num_objectives}")
             wandb.config.update(args)
 
     def set_sampling_model(self, model, sample_prob=0.5):
@@ -232,12 +233,15 @@ class Dataset:
             except Exception:
                 return default
 
+        def clamp(num, min_value, max_value):
+            return max(min(num, max_value), min_value)
+
         qeds = safe(QED.qed, rdmol, 0)
         sas = safe(sascore.calculateScore, rdmol, 10)
         sas = (10 - sas) / 9  # Turn into a [0-1] reward
         molwts = safe(Descriptors.MolWt, rdmol, 1000)
         molwts = ((300 - molwts) / 700 + 1)  # 1 until 300 then linear decay to 0 until 1000
-        molwts = max(min(molwts, 1), 0)
+        molwts = clamp(molwts, 0, 1)
         flat_rewards = np.array([seh_preds.item(), qeds, sas, molwts])[:self.args.num_objectives]
         if self.args.reward_type == "sum":
             return np.sum(flat_rewards, axis=0) ** self.reward_exp, flat_rewards
@@ -350,7 +354,6 @@ def main(args):
                 stem_out, bond_out = model(s, do_stems=True)
             else:
                 stem_out, mol_out, bond_out = model(s, do_bonds=True)
-            print(s, type(s))
             bs = torch.tensor(s._slice_dict['bonds'])
             ss = torch.tensor(s._slice_dict['stems'])
             loss = 0
@@ -401,9 +404,22 @@ def array_may_17(args):
     ]
     return all_hps
 
+def set_seed(seed):
+    """Set seed"""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    os.environ["PYTHONHASHSEED"] = str(seed)
+
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    set_seed(args.seed)
     if args.array:
         all_hps = eval(args.array)(args)
 
