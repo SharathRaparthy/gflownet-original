@@ -363,21 +363,20 @@ def get_topk(rewards, k):
     ----------
     avergae Topk rewards across all preferences
     '''
-    if len(rewards.shape) < 2:
-        rewards = torch.unsqueeze(rewards, -1)
-    sorted_rewards = torch.sort(rewards, 1).values
-    topk_rewards = sorted_rewards[range(rewards.shape[0]), :k]
-    mean_topk = torch.mean(topk_rewards.mean(-1))
-    return mean_topk
+    topk_rewards, topk_indices = torch.topk(rewards, k)
+    mean_topk_rewards = torch.mean(topk_rewards, dim=0).item()
+    return mean_topk_rewards
 
 
 class MultiObjectiveStatsHook:
-    def __init__(self, num_to_keep: int):
+    def __init__(self, num_to_keep: int, num_objs: int):
         self.num_to_keep = num_to_keep
         self.all_flat_rewards: List[Tensor] = []
         self.hsri_epsilon = 0.3
+        self.uniform_reference_points = uniform_reference_points(num_objs, p=12)
+        self.utopian_point = np.ones(num_objs)
 
-    def __call__(self, flat_rewards):
+    def __call__(self, flat_rewards, sampled_molecules, rewards):
         flat_rewards = torch.tensor(flat_rewards)
         self.all_flat_rewards = self.all_flat_rewards + list(flat_rewards)
         if len(self.all_flat_rewards) > self.num_to_keep:
@@ -408,7 +407,9 @@ class MultiObjectiveStatsHook:
             hsri_on_flat, _ = hsr_indicator.calculate_hsr(-1 * flat_rewards)
         except Exception:
             hsri_on_flat = 0
-
+        r2_score = r2_indicator_set(self.uniform_reference_points, flat_rewards, self.utopian_point)
+        topk_diversity = compute_diverse_top_k(sampled_molecules, rewards, 100)
+        topk_rewards = get_topk(rewards, 100)
         return {
             'HV with zero ref': hypervolume_with_zero_ref,
             'HV w/o zero ref': hypervolume_wo_zero_ref,
@@ -416,6 +417,9 @@ class MultiObjectiveStatsHook:
             'Unnormalized HV w/o zero ref': unnorm_hypervolume_wo_zero_ref,
             'hsri_with_pareto': hsri_w_pareto,
             'hsri_on_flat_rew': hsri_on_flat,
+            'r2_score': r2_score,
+            'topk_diversity': topk_diversity,
+            'topk_rewards': topk_rewards,
         }
 
 

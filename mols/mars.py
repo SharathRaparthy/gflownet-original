@@ -16,7 +16,7 @@ import time
 import traceback
 import warnings
 import wandb
-
+import random
 warnings.filterwarnings('ignore')
 import numpy as np
 import pandas as pd
@@ -265,7 +265,9 @@ class Dataset:
         # This returns a dictionary of metrics.
 
         flat_rewards = np.array([i[-1] for i in self.sampled_mols])
-        metrics = self.stats_hook(flat_rewards)
+
+        rewards, mols, flat_rewards = zip(*self.sampled_mols)
+        metrics = self.stats_hook(flat_rewards, rewards, mols)
         # Use wandb to log the metrics
         if self.args.use_wandb:
             wandb.log(metrics)
@@ -349,7 +351,7 @@ def main(args):
     for i in range(args.num_iterations + 1):
         dataset.step_all(num_threads)
         for _ in tqdm(range(args.num_sgd_steps), leave=False):
-            s, a = dataset.sample2batch(dataset.sample(mbsize))
+            s, a = dataset.sample2batch(dataset.x(mbsize))
             if args.repr_type == 'block_graph':
                 stem_out, bond_out = model(s, do_stems=True)
             else:
