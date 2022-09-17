@@ -266,7 +266,8 @@ class Dataset:
 
         flat_rewards = np.array([i[-1] for i in self.sampled_mols])
         rewards, mols, _ = zip(*self.sampled_mols)
-        metrics = self.stats_hook(flat_rewards, rewards, mols)
+        smiles = [Chem.MolToSmiles(i.mol) for i in mols]
+        metrics = self.stats_hook(flat_rewards, rewards, smiles)
         # Use wandb to log the metrics
         if self.args.use_wandb:
             wandb.log(metrics)
