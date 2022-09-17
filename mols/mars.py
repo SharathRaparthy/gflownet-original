@@ -134,7 +134,7 @@ class Dataset:
         self.sampled_mols = []
         self.reward_exp = args.reward_exp
         self.proxy_reward = _load_task_models(args.proxy_path)['seh']
-        self.stats_hook = MultiObjectiveStatsHook(256)
+        self.stats_hook = MultiObjectiveStatsHook(256, self.num_objectives)
 
         if args.use_wandb:
             # Wandb project initialization
