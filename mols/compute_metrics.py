@@ -376,7 +376,7 @@ class MultiObjectiveStatsHook:
         self.uniform_reference_points = uniform_reference_points(num_objs, p=12)
         self.utopian_point = np.ones(num_objs)
 
-    def __call__(self, flat_rewards, sampled_molecules, rewards):
+    def __call__(self, flat_rewards, rewards, sampled_molecules):
         flat_rewards = torch.tensor(flat_rewards)
         self.all_flat_rewards = self.all_flat_rewards + list(flat_rewards)
         if len(self.all_flat_rewards) > self.num_to_keep:
