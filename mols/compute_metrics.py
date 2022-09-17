@@ -363,7 +363,7 @@ def get_topk(rewards, k):
     ----------
     avergae Topk rewards across all preferences
     '''
-    topk_rewards, topk_indices = torch.topk(rewards, k)
+    topk_rewards, topk_indices = torch.topk(torch.FloatTensor(rewards), k)
     mean_topk_rewards = torch.mean(topk_rewards, dim=0).item()
     return mean_topk_rewards
 
