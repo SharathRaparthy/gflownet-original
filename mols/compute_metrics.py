@@ -329,11 +329,11 @@ class Normalizer(object):
 
 
 # Should be calculated per preference
-def compute_diverse_top_k(smiles, rewards, k, thresh=0.7):
+def compute_diverse_top_k(rdmols, rewards, k, thresh=0.7):
     # mols is a list of (reward, mol)
     mols = []
-    for i in range(len(smiles)):
-        mols.append([rewards[i].item(), smiles[i]])
+    for i in range(len(rdmols)):
+        mols.append([rewards[i].item(), rdmols[i]])
     mols = sorted(mols, key=lambda m: m[0], reverse=True)
     modes = [mols[0]]
     mode_fps = [Chem.RDKFingerprint(mols[0][1])]
