@@ -132,6 +132,7 @@ class Dataset:
         #######
         # This is the "result", here a list of (reward, BlockMolDataExt) tuples
         self.sampled_mols = []
+        self.current_mols = []
         self.reward_exp = args.reward_exp
         self.proxy_reward = _load_task_models(args.proxy_path)['seh']
         self.stats_hook = MultiObjectiveStatsHook(256, args.num_objectives)
@@ -203,6 +204,7 @@ class Dataset:
         if A > U:
             self.mol_buffer[i] = m_new, (r_new, flat_reward_new)
             self.sampled_mols.append((r_new, m_new, flat_reward_new))
+            self.current_mols.append((r_new, m_new, flat_reward_new))
         if r_new > r:
             self.train_mols.append((m, action))
 
@@ -264,8 +266,8 @@ class Dataset:
         # Then pass this array to the MultiObjectiveStatsHook class to calculate the metrics.
         # This returns a dictionary of metrics.
 
-        flat_rewards = np.array([i[-1] for i in self.sampled_mols])
-        rewards, mols, _ = zip(*self.sampled_mols)
+        flat_rewards = np.array([i[-1] for i in self.current_mols])
+        rewards, mols, _ = zip(*self.current_mols)
         rdmols = [i.mol for i in mols]
         metrics = self.stats_hook(flat_rewards, rewards, rdmols)
         # Use wandb to log the metrics
@@ -273,6 +275,7 @@ class Dataset:
             wandb.log(metrics)
         else:
             print(metrics)
+        self.current_mols = []
 
 
 _stop = [None]

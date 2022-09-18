@@ -408,7 +408,7 @@ class MultiObjectiveStatsHook:
         except Exception:
             hsri_on_flat = 0
         r2_score = r2_indicator_set(self.uniform_reference_points, flat_rewards, self.utopian_point)
-        topk_diversity = compute_diverse_top_k(sampled_molecules, rewards, 100)
+        topk_diversity = compute_diverse_top_k(sampled_molecules[-self.num_to_keep:], rewards[-self.num_to_keep:], 100)
         topk_rewards = get_topk(rewards, 100)
         return {
             'HV with zero ref': hypervolume_with_zero_ref,
