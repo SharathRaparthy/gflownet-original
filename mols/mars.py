@@ -139,7 +139,7 @@ class Dataset:
 
         if args.use_wandb:
             # Wandb project initialization
-            wandb.init(project="MARS baseline", entity="mogfn", name=f" Final| {args.reward_type} | Number Of Objectives - {args.num_objectives}")
+            wandb.init(project="MARS baseline", entity="mogfn", name=f"Finalv2 | {args.reward_type} | No. Of Objectives - {args.num_objectives} | Reward exp: {args.reward_exp}")
             wandb.config.update(args)
 
     def set_sampling_model(self, model, sample_prob=0.5):
@@ -293,7 +293,7 @@ def main(args):
 
     dataset = Dataset(args, bpath, device, args.repr_type, floatX=args.floatX)
 
-    exp_dir = f'{args.save_path}/{args.array}_{args.run}/'
+    exp_dir = f'{args.save_path}'
     os.makedirs(exp_dir, exist_ok=True)
     print(args)
     debug_no_threads = True
