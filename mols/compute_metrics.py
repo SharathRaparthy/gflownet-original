@@ -376,7 +376,7 @@ class MultiObjectiveStatsHook:
         self.uniform_reference_points = uniform_reference_points(num_objs, p=12)
         self.utopian_point = np.ones(num_objs)
 
-    def __call__(self, flat_rewards, rewards, sampled_molecules):
+    def __call__(self, flat_rewards, rewards, sampled_molecules, train_type):
         flat_rewards = torch.tensor(flat_rewards)
         self.all_flat_rewards = self.all_flat_rewards + list(flat_rewards)
         if len(self.all_flat_rewards) > self.num_to_keep:
@@ -411,8 +411,8 @@ class MultiObjectiveStatsHook:
         # topk_diversity = compute_diverse_top_k(sampled_molecules[-self.num_to_keep:], rewards[-self.num_to_keep:], 100)
         # topk_rewards = get_topk(rewards, 100)
         return {
-            'HV with zero ref': hypervolume_with_zero_ref,
-            'HV w/o zero ref': hypervolume_wo_zero_ref,
+            'HV with zero ref ' + train_type: hypervolume_with_zero_ref,
+            'HV w/o zero ref ' + train_type: hypervolume_wo_zero_ref,
             # 'Unnormalized HV with zero ref': unnorm_hypervolume_with_zero_ref,
             # 'Unnormalized HV w/o zero ref': unnorm_hypervolume_wo_zero_ref,
             # 'hsri_with_pareto': hsri_w_pareto,

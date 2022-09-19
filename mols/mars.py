@@ -266,7 +266,7 @@ class Dataset:
         a = torch.tensor(a, device=self._device).long()
         return s, a
 
-    def log_metrics(self):
+    def log_metrics(self, train_type):
         # Extract flat_rewards from self.sampled_mols where the flat_rewards is at the last index in the list
         # Then pass this array to the MultiObjectiveStatsHook class to calculate the metrics.
         # This returns a dictionary of metrics.
@@ -274,7 +274,7 @@ class Dataset:
         flat_rewards = np.array([i[-1] for i in self.current_mols])
         rewards, mols, _ = zip(*self.current_mols)
         rdmols = [i.mol for i in mols]
-        metrics = self.stats_hook(flat_rewards, rewards, rdmols)
+        metrics = self.stats_hook(flat_rewards, rewards, rdmols, train_type)
         # Use wandb to log the metrics
         if self.args.use_wandb:
             wandb.log(metrics)
@@ -383,7 +383,7 @@ def main(args):
                 torch.nn.utils.clip_grad_value_(model.parameters(),
                                                 args.clip_grad)
             opt.step()
-        dataset.log_metrics()
+        dataset.log_metrics("train")
         model.training_steps = i + 1
         if not i % 10:
             last_losses = [np.round(np.mean(i), 3) for i in zip(*last_losses)]
@@ -400,7 +400,7 @@ def main(args):
     dataset = Dataset(args, bpath, device, args.repr_type, floatX=args.floatX)
     dataset.set_sampling_model(model, sample_prob=args.sample_prob)
     dataset.step_all(num_threads)
-    dataset.log_metrics()
+    dataset.log_metrics("test")
     stop_everything()
     save_stuff()
     print('Done.')
