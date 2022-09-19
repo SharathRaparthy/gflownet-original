@@ -390,6 +390,12 @@ def main(args):
         if len(dataset.sampled_mols) >= args.max_generated_mols:
             break
 
+    # Sample 5000 molecules for evaluation.
+    model.eval()
+    dataset = Dataset(args, bpath, device, args.repr_type, floatX=args.floatX)
+    dataset.set_sampling_model(model, sample_prob=args.sample_prob)
+    dataset.step_all(num_threads)
+    dataset.log_metrics()
     stop_everything()
     save_stuff()
     print('Done.')

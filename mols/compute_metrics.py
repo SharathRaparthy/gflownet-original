@@ -393,33 +393,33 @@ class MultiObjectiveStatsHook:
         normed_gfn_pareto = hypercube_transform(gfn_pareto)
         hypervolume_with_zero_ref = get_hypervolume(torch.tensor(normed_gfn_pareto), zero_ref=True)
         hypervolume_wo_zero_ref = get_hypervolume(torch.tensor(normed_gfn_pareto), zero_ref=False)
-        unnorm_hypervolume_with_zero_ref = get_hypervolume(torch.tensor(gfn_pareto), zero_ref=True)
-        unnorm_hypervolume_wo_zero_ref = get_hypervolume(torch.tensor(gfn_pareto), zero_ref=False)
+        # unnorm_hypervolume_with_zero_ref = get_hypervolume(torch.tensor(gfn_pareto), zero_ref=True)
+        # unnorm_hypervolume_wo_zero_ref = get_hypervolume(torch.tensor(gfn_pareto), zero_ref=False)
 
-        upper = np.zeros(normed_gfn_pareto.shape[-1]) + self.hsri_epsilon
-        lower = np.ones(normed_gfn_pareto.shape[-1]) * -1 - self.hsri_epsilon
-        hsr_indicator = HSR_Calculator(lower, upper)
-        try:
-            hsri_w_pareto, x = hsr_indicator.calculate_hsr(-1 * gfn_pareto)
-        except Exception:
-            hsri_w_pareto = 0
-        try:
-            hsri_on_flat, _ = hsr_indicator.calculate_hsr(-1 * flat_rewards)
-        except Exception:
-            hsri_on_flat = 0
-        r2_score = r2_indicator_set(self.uniform_reference_points, flat_rewards, self.utopian_point)
-        topk_diversity = compute_diverse_top_k(sampled_molecules[-self.num_to_keep:], rewards[-self.num_to_keep:], 100)
-        topk_rewards = get_topk(rewards, 100)
+        # upper = np.zeros(normed_gfn_pareto.shape[-1]) + self.hsri_epsilon
+        # lower = np.ones(normed_gfn_pareto.shape[-1]) * -1 - self.hsri_epsilon
+        # hsr_indicator = HSR_Calculator(lower, upper)
+        # try:
+        #     hsri_w_pareto, x = hsr_indicator.calculate_hsr(-1 * gfn_pareto)
+        # except Exception:
+        #     hsri_w_pareto = 0
+        # try:
+        #     hsri_on_flat, _ = hsr_indicator.calculate_hsr(-1 * flat_rewards)
+        # except Exception:
+        #     hsri_on_flat = 0
+        # r2_score = r2_indicator_set(self.uniform_reference_points, flat_rewards, self.utopian_point)
+        # topk_diversity = compute_diverse_top_k(sampled_molecules[-self.num_to_keep:], rewards[-self.num_to_keep:], 100)
+        # topk_rewards = get_topk(rewards, 100)
         return {
             'HV with zero ref': hypervolume_with_zero_ref,
             'HV w/o zero ref': hypervolume_wo_zero_ref,
-            'Unnormalized HV with zero ref': unnorm_hypervolume_with_zero_ref,
-            'Unnormalized HV w/o zero ref': unnorm_hypervolume_wo_zero_ref,
-            'hsri_with_pareto': hsri_w_pareto,
-            'hsri_on_flat_rew': hsri_on_flat,
-            'r2_score': r2_score,
-            'topk_diversity': topk_diversity,
-            'topk_rewards': topk_rewards,
+            # 'Unnormalized HV with zero ref': unnorm_hypervolume_with_zero_ref,
+            # 'Unnormalized HV w/o zero ref': unnorm_hypervolume_wo_zero_ref,
+            # 'hsri_with_pareto': hsri_w_pareto,
+            # 'hsri_on_flat_rew': hsri_on_flat,
+            # 'r2_score': r2_score,
+            # 'topk_diversity': topk_diversity,
+            # 'topk_rewards': topk_rewards,
         }
 
 
