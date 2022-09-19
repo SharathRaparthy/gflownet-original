@@ -224,7 +224,11 @@ class Dataset:
         graph = [reward_proxy.mol2graph(rdmol)]
         is_valid = torch.tensor([i is not None for i in graph]).bool()
         if not is_valid.any():
-            return 0, np.zeros(4)
+            invalid_rewards = -1 * np.ones(self.args.num_objectives)
+            if self.args.reward_type == "sum":
+                return invalid_rewards.sum(), invalid_rewards
+            else:
+                return invalid_rewards.prod(), invalid_rewards
         batch = gd.Batch.from_data_list([i for i in graph if i is not None])
         seh_preds = self.proxy_reward(batch).reshape(-1).clip(1e-4, 100).data.cpu() / 8
         seh_preds[seh_preds.isnan()] = 0
