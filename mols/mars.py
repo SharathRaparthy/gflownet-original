@@ -139,7 +139,8 @@ class Dataset:
 
         if args.use_wandb:
             # Wandb project initialization
-            wandb.init(project="MARS baseline", entity="mogfn", name=f"Finalv2 | {args.reward_type} | No. Of Objectives - {args.num_objectives} | Reward exp: {args.reward_exp}")
+            wandb.init(project="MARS baseline", entity="mogfn",
+                       name=f"Finalv3 | No. Of Objectives - {args.num_objectives}")
             wandb.config.update(args)
 
     def set_sampling_model(self, model, sample_prob=0.5):
